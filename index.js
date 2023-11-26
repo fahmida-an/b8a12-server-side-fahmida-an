@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const app =express();
 const cors = require('cors')
@@ -41,6 +41,18 @@ async function run() {
         res.send(result)
     })
 
+    app.post("/news", async(req,res) => {
+      const newNews = req.body;
+      const result = await newsCollection.insertOne(newNews)
+      res.send(result)
+    })
+
+    app.get('/news/:id', async(req,res) => {
+      const id = req.params.id;
+      const query ={ _id: new ObjectId(id)}
+      const result = await newsCollection.findOne(query)
+      res.send(result)
+    })
 
 
     app.post("/premiumPackage", async(req,res)=> {
@@ -74,6 +86,21 @@ async function run() {
       res.send(result)
     })
 
+    // user api #
+
+    app.get('/users',async(req,res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.delete('/users/:id', async(req,res) => {
+      const id = req.params.id;
+      const query ={ _id: new ObjectId(id)}
+      const result = await usersCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
     app.put('/users/:email', async (req, res) => {
         const email = req.params.email
         const user = req.body
@@ -90,6 +117,51 @@ async function run() {
           options
         )
         res.send(result)
+      })
+
+      app.get('/users/:email', async (req,res) => {
+        const email = req.params.email;
+        const result  = await usersCollection.findOne({email})
+        res.send(result)
+      })
+
+      //admin api
+
+      app.get('/users/admin/:email', async(req,res)=> {
+        const email = req.params.email;
+        const query = {email: email}
+        const user = await usersCollection.findOne(query);
+
+        if(user){
+          admin = user?.role === 'admin'
+        }
+        res.send({admin});
+      })
+
+
+      app.patch('/users/admin/:id', async(req,res) => {
+        const userId = req.params.id;
+        const filter = {_id: new ObjectId(userId)}
+        const updatedDoc = {
+          $set: {
+            role: 'admin'
+          }
+        }
+        const result = await usersCollection.updateOne(filter, updatedDoc)
+        res.send(result)
+      })
+
+      //premium users api
+
+      app.get('/users/premium/:email', async(req,res)=> {
+        const email = req.params.email;
+        const query = {email: email}
+        const user = await usersCollection.findOne(query);
+
+        if(user){
+          premium = user?.role === 'premium'
+        }
+        res.send({premium});
       })
 
       //payment intent
@@ -117,14 +189,14 @@ async function run() {
         const userEmail = payment.email;
 
         const updateResult = await usersCollection.updateOne(
-          { email: userEmail, role: 'normal' }, // Find the user by email and role 'normal'
-          { $set: { role: 'premium' } } // Update the role to 'premium'
+          { email: userEmail, role: 'normal' }, 
+          { $set: { role: 'premium' } } 
         );
 
         if (updateResult.modifiedCount === 1) {
-          res.status(200).send('Payment successful, user role updated to premium.');
+          res.status(200).send(' user role updated to premium.');
         } else {
-          res.status(500).send('Payment successful, but failed to update user role to premium.');
+          res.status(500).send('failed to update user role to premium.');
 
           
         }
