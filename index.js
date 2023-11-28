@@ -73,11 +73,18 @@ async function run() {
       next()
     }
 
-    //news api
+    //news api search
     app.get("/news", async(req,res) => {
-        const result = await newsCollection.find().toArray()
+      const filter = req.query;
+      console.log(filter);
+      const query ={
+        title: {$regex: filter.search} 
+      }
+        const result = await newsCollection.find(query).toArray()
         res.send(result)
     })
+
+  
 
     app.post("/news", async(req,res) => {
       const newNews = req.body;
@@ -115,6 +122,25 @@ async function run() {
         console.error(error);
       }
     });
+
+    app.put('/news/:id', async(req,res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          title: item.title,
+          publisher: item.publisher,
+          newstab: item.newstab,
+          image:item.image,
+          details: item.details,
+          date:item.date,
+          email: item.email
+        }
+      }
+      const result = newsCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
    
 
 
