@@ -9,7 +9,9 @@ const port = process.env.PORT || 5000;
 
 // middleware 
 
-app.use(cors())
+app.use(cors(
+  origin='http://localhost:5173/'
+))
 app.use(express.static("public"))
 app.use(express.json())
 
@@ -36,6 +38,8 @@ async function run() {
     const premiumCollection = client.db("NewsDb").collection("premium");
     const premiumPackageCollection = client.db("NewsDb").collection("premiumPackage");
     const paymentCollection = client.db("NewsDb").collection("payments");
+    const publisherCollection = client.db("NewsDb").collection("publisher");
+    const reviewCollection = client.db("NewsDb").collection("testimonial");
 
     // jwt api 
 
@@ -73,14 +77,14 @@ async function run() {
       next()
     }
 
-    //news api search
+    //news api
     app.get("/news", async(req,res) => {
-      const filter = req.query;
-      console.log(filter);
-      const query ={
-        title: {$regex: filter.search} 
-      }
-        const result = await newsCollection.find(query).toArray()
+      // const filter = req.query;
+      // console.log(filter);
+      // const query ={
+      //   title: {$regex: filter.search} 
+      // }
+        const result = await newsCollection.find().toArray()
         res.send(result)
     })
 
@@ -143,6 +147,17 @@ async function run() {
     })
    
 
+    app.get('/publisher', async(req,res) => {
+      const result = await publisherCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.post("/publisher", async(req,res) => {
+      const newPublisher = req.body;
+      const result = await publisherCollection.insertOne(newPublisher)
+      res.send(result)
+    })
+
 
     app.post("/premiumPackage", async(req,res)=> {
       const premiumUser = req.body;
@@ -151,7 +166,7 @@ async function run() {
     })
 
 
-    app.get("/premiumPackage", async (req, res) => {
+    app.get("/premiumPackage", verifyToken, async (req, res) => {
       try {
         const email = req.query.email;
         const query = { email: email };
@@ -163,14 +178,14 @@ async function run() {
       }
     });
 
-    app.get("/premium", async(req,res) => {
+    app.get("/premium", verifyToken, async(req,res) => {
       const result = await premiumCollection.find().toArray()
       res.send(result)
     })
 
     // user api 
 
-    app.get('/users', verifyToken, verifyAdmin, async(req,res) => {
+    app.get('/users', async(req,res) => {
       const result = await usersCollection.find().toArray();
       res.send(result)
     })
@@ -200,6 +215,22 @@ async function run() {
         )
         res.send(result)
       })
+
+      app.patch('/update/:email', async(req,res) => {
+        const email = req.params.email
+        const user = req.body
+        const query = { email: email }
+        const updatedDoc = {
+          $set: {
+            name: user.name,
+            email: user.email,
+
+          }
+        }
+        const result = usersCollection.updateOne(filter, updatedDoc)
+        res.send(result)
+      })
+     
 
       app.get('/users/:email', async (req,res) => {
         const email = req.params.email;
@@ -246,6 +277,21 @@ async function run() {
         res.send({premium});
       })
 
+      //reviews
+
+      
+    app.get('/testimonial', async(req,res) => {
+      const result = await reviewCollection.find().toArray()
+      res.send(result)
+    })
+
+
+    app.post("/testimonial", async(req,res) => {
+      const newTestimonial = req.body;
+      const result = await reviewCollection.insertOne(newTestimonial)
+      res.send(result)
+    })
+
       //payment intent
       // 1.
       app.post('/create-payment-intent', async(req,res) => {
@@ -265,7 +311,7 @@ async function run() {
 
       // 2 payment api
 
-      app.post('/payments', async(req,res) => {
+      app.post('/payments', verifyToken, async(req,res) => {
         const payment = req.body;
         const paymentResult = await paymentCollection.insertOne(payment)
         const userEmail = payment.email;
@@ -276,9 +322,9 @@ async function run() {
         );
 
         if (updateResult.modifiedCount === 1) {
-          res.status(200).send(' user role updated to premium.');
+          res.status(200).send(' updated');
         } else {
-          res.status(500).send('failed to update user role to premium.');
+          res.status(401).send('not updated');
 
           
         }
@@ -294,8 +340,8 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
