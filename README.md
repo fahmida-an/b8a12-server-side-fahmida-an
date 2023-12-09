@@ -1,3 +1,3 @@
-Technologies:
-Backend: nodejs, expressjs
-Database: mongodb
+## Technologies:
+- Backend: nodejs, expressjs
+- Database: mongodb
